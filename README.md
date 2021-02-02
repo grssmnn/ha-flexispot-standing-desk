@@ -51,7 +51,37 @@ Message Identifier for the height reported by the controller is `0x12` with thre
   3 3 3    77
 ```
 
+## Home Assistant `configuration.xaml`
+These are my custom sensors I've added to my `configuration.yaml`:
+
+```yaml
+mqtt:
+    broker: <MQTT Broker>
+    discovery: true
+
+binary_sensor:
+  - platform: template
+    sensors:
+      standing_at_desk:
+        friendly_name: "Standing at desk"
+        value_template: >-
+            {{states('sensor.standingdesk')|float > 100}}
+
+sensor:
+  - platform: history_stats
+    sensors:
+      standing_today:
+        name: Standing today
+        entity_id: binary_sensor.standing_at_desk
+        state: "on"
+        type: time
+        start: '{{ now().replace(hour=0, minute=0, second=0) }}'
+        end: '{{ now() }}'
+```
+
+The binary sensor `standing_at_desk` switches to `on` if the reported height of the desk is higher than 100cm. This is the indicator that I'm standing right now. The sensor `standing_today` counts how long I was standing for today.
+
 ## TODO
-Right now I'm using an ESP32, a RJ45 Y-adapter and an external power supply. Reading the values is only working if the original control panel is turned on. I didn't manage to read them out so far with the other RJ45 port and without the control panel.
+Right now I'm using an ESP32, a RJ45 Y-adapter and an external power supply. Reading the values is only working if the original control panel is turned on. I didn't manage to read them out so far with the other RJ45 port and without the control panel. Because of that I need to leave the ESP32 powered on 24/7. I would like to develop a "standalone solution" which requests every `x` minutes the current height and goes to deep sleep in the mean time.
 
 Since there's is also a 5V DC power supply on the RJ45 you probably won't need an external power supply. Sadly there's not enough power on one port for both, the control panel and the ESP32.

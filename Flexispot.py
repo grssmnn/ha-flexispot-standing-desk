@@ -15,19 +15,29 @@ class Flexispot:
     MQTT_TOPIC_STATE = "homeassistant/sensor/standingdesk/state"
 
     UART_ID = 2
+    READ_PIN_ID = 18
 
-    def __init__(self):
-        print("Connecting to WLAN")
+    def __init__(self, publish_discovery = True, debug = False):
+        self.debug = debug
+
+        self.log("Init...")
+        system_led = Pin(2, Pin.OUT)
+        system_led.value(1)
+
+        self.log("Connecting to WLAN")
         self.wlan = self.connect_to_wlan()
-        print("waiting for wlan connection")
+        self.log("waiting for wlan connection")
         while not self.wlan.isconnected():
             time.sleep(1)
         
-        print("Connecting to MQTT")
-        self.client = self.connect_to_mqtt()
+        self.log("Connecting to MQTT")
+        self.mqtt = self.connect_to_mqtt(publish_discovery)
 
-        print("Setup UART")
+        self.log("Setup UART")
         self.serial = UART(self.UART_ID, baudrate=9600, timeout=500)
+
+        self.read_pin = Pin(self.READ_PIN_ID, Pin.OUT)
+        self.read_pin.value(1)
     
     def connect_to_wlan(self):
         wlan = network.WLAN(network.STA_IF) 
@@ -35,15 +45,16 @@ class Flexispot:
         wlan.connect(self.WIFI_SSID, self.WIFI_PASS)
         return wlan
     
-    def connect_to_mqtt(self):
+    def connect_to_mqtt(self, publish_discovery):
         client = MQTTClient(self.MQTT_CLIENT_ID, self.MQTT_SERVER)
         client.connect()
-        discovery = {
-            "name": "standingdesk",
-            "state_topic": self.MQTT_TOPIC_STATE,
-            "unit_of_measurement": "cm"
-        }
-        client.publish(self.MQTT_TOPIC_DISCOVERY, json.dumps(discovery))
+        if publish_discovery:
+            discovery = {
+                "name": "standingdesk",
+                "state_topic": self.MQTT_TOPIC_STATE,
+                "unit_of_measurement": "cm"
+            }
+            client.publish(self.MQTT_TOPIC_DISCOVERY, json.dumps(discovery))
         return client
     
     def decode_digit(self, b):
@@ -75,35 +86,67 @@ class Flexispot:
     
     def has_decimal_point(self, b):
         return (b & 0x80) == 0x80
-
-    def read_height(self):
-        print("Waiting for display")
-        
+    
+    def query_height(self):        
         while(True):
+            self.cmd_no_button()
             s = self.serial.read(1)
             if s != None:
-                try:
-                    while s != None and s[0] != 0x9b:
-                        s = self.serial.read(1)
-                    
-                    msg_len = int.from_bytes(self.serial.read(1), "little")
-                    msg = self.serial.read(msg_len)
-                    
-                    if msg[0] == 0x12:
-                        height = self.decode_digit(msg[1]) * 100 + self.decode_digit(msg[2]) * 10 + self.decode_digit(msg[3])
-                        if self.has_decimal_point(msg[2]):
-                            height = height / 10.0
-                        print(height)
-                        self.publish_height(height)
-                except TypeError:
-                    print("Display went off")
-    
-    # State won't be published more than once per second
-    def publish_height(self, height):
-        if not hasattr(self, "last_ticks"):
-            self.last_ticks = 0
+                while s != None and s[0] != 0x9b:
+                    s = self.serial.read(1)
 
-        current_ticks = time.ticks_ms()
-        if current_ticks - self.last_ticks > 1000:
-            self.client.publish(self.MQTT_TOPIC_STATE, str(height))
-            self.last_ticks = time.ticks_ms()
+                msg_len = int.from_bytes(self.serial.read(1), "little")
+                msg = self.serial.read(msg_len)
+                msg_id = msg[0]
+
+                if msg_id == 0x12:
+                    height = self.decode_digit(msg[1]) * 100 + self.decode_digit(msg[2]) * 10 + self.decode_digit(msg[3])
+                    if self.has_decimal_point(msg[2]):
+                        height = height / 10.0
+                    self.log("sending")
+                    self.mqtt.publish(self.MQTT_TOPIC_STATE, str(height))
+                    return height
+                else:
+                    self.log("not height response")
+            else:
+                self.log("didn't receive bytes")
+            
+    
+    def cmd_no_button(self):
+        self.log("sending cmd no button pressed")
+        cmd = bytearray(b'\x9b\x06\x02\x00\x00\x6c\xa1\x9d')
+        self.serial.write(cmd)
+
+    def cmd_up(self):
+        self.log("sending cmd up button")
+        cmd = bytearray(b'\x9b\x06\x02\x01\x00\xfc\xa0\x9d')
+        self.serial.write(cmd)
+    
+    def cmd_down(self):
+        self.log("sending cmd down button")
+        cmd = bytearray(b'\x9b\x06\x02\x02\x00\x0c\xa0\x9d')
+        self.serial.write(cmd)
+    
+    def cmd_pos1(self):
+        self.log("sending cmd pos 1 button")
+        cmd = bytearray(b'\x9b\x06\x02\x04\x00\xac\xa3\x9d')
+        self.serial.write(cmd)
+    
+    def cmd_pos2(self):
+        self.log("sending cmd pos 2 button")
+        cmd = bytearray(b'\x9b\x06\x02\x08\x00\xac\xa6\x9d')
+        self.serial.write(cmd)
+    
+    def cmd_pos3(self):
+        self.log("sending cmd pos 3 button")
+        cmd = bytearray(b'\x9b\x06\x02\x10\x00\xac\xac\x9d')
+        self.serial.write(cmd)
+    
+    def cmd_m(self):
+        self.log("sending cmd m button")
+        cmd = bytearray(b'\x9b\x06\x02\x20\x00\xac\xac\x9d')
+        self.serial.write(cmd)
+
+    def log(self, msg):
+        if self.debug:
+            print(msg)
