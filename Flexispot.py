@@ -5,7 +5,7 @@ import time
 from machine import UART, Pin
 from umqttsimple import MQTTClient
 
-class Flexispot:
+class ControlPanel:
     WIFI_SSID = "<YOUR SSID>"
     WIFI_PASS = "<YOUR PASS>"
 
@@ -13,6 +13,7 @@ class Flexispot:
     MQTT_SERVER = "<MQTT SERVER>"
     MQTT_TOPIC_DISCOVERY = "homeassistant/sensor/standingdesk/config"
     MQTT_TOPIC_STATE = "homeassistant/sensor/standingdesk/state"
+    MQTT_TOPIC_CMD = "homeassistant/sensor/standingdesk/set"
 
     UART_ID = 2
     READ_PIN_ID = 18
@@ -48,6 +49,10 @@ class Flexispot:
     def connect_to_mqtt(self, publish_discovery):
         client = MQTTClient(self.MQTT_CLIENT_ID, self.MQTT_SERVER)
         client.connect()
+
+        client.set_callback(self.on_mqtt_msg)
+        client.subscribe(self.MQTT_TOPIC_CMD)
+
         if publish_discovery:
             discovery = {
                 "name": "standingdesk",
@@ -83,6 +88,8 @@ class Flexispot:
             return 8
         elif s[0] and s[1] and s[2] and s[3] and not s[4] and s[5] and s[6]:
             return 9
+        
+        raise ValueError("unknown digit")
     
     def has_decimal_point(self, b):
         return (b & 0x80) == 0x80
@@ -96,21 +103,51 @@ class Flexispot:
                     s = self.serial.read(1)
 
                 msg_len = int.from_bytes(self.serial.read(1), "little")
+
                 msg = self.serial.read(msg_len)
                 msg_id = msg[0]
 
                 if msg_id == 0x12:
-                    height = self.decode_digit(msg[1]) * 100 + self.decode_digit(msg[2]) * 10 + self.decode_digit(msg[3])
-                    if self.has_decimal_point(msg[2]):
-                        height = height / 10.0
-                    self.log("sending")
-                    self.mqtt.publish(self.MQTT_TOPIC_STATE, str(height))
-                    return height
+                    try:
+                        height = self.decode_digit(msg[1]) * 100 + self.decode_digit(msg[2]) * 10 + self.decode_digit(msg[3])
+                        if self.has_decimal_point(msg[2]):
+                            height = height / 10.0
+                        self.log("sending")
+                        self.mqtt.publish(self.MQTT_TOPIC_STATE, str(height))
+                        return height
+                    except ValueError:
+                        print("error")
+                        print(msg)
                 else:
                     self.log("not height response")
             else:
                 self.log("didn't receive bytes")
-            
+    
+    def listen_mqtt(self):
+        self.log("Start listening to mqtt commands")
+        while True:
+            self.mqtt.wait_msg()
+
+    def on_mqtt_msg(self, topic, msg):
+        if topic == b''+self.MQTT_TOPIC_CMD:
+            if msg == b'up':
+                self.cmd_up()
+            elif msg == b'down':
+                self.cmd_down()
+            elif msg == b'pos1':
+                self.cmd_pos1()
+            elif msg == b'pos2':
+                self.cmd_pos2()
+            elif msg == b'pos3':
+                self.cmd_pos3()
+            elif msg == b'm':
+                self.cmd_m()
+            else:
+                self.log("unknown message")
+
+        else:
+            self.log("unknown topic")
+            self.log(topic)
     
     def cmd_no_button(self):
         self.log("sending cmd no button pressed")
@@ -146,6 +183,11 @@ class Flexispot:
         self.log("sending cmd m button")
         cmd = bytearray(b'\x9b\x06\x02\x20\x00\xac\xac\x9d')
         self.serial.write(cmd)
+    
+    def deepsleep(self, seconds):
+        self.log("going to deep sleep")
+        self.read_pin.value(0)
+        machine.deepsleep(seconds)
 
     def log(self, msg):
         if self.debug:

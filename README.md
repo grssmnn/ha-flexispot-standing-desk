@@ -1,8 +1,6 @@
 # HA Flexispot Standing Desk
 
-This is an integration of a standing desk from Flexispot into home assistant in micropython. The height is read out from the desk's controller and it gets pushed to Home Assistant via MQTT. After querying the height my ESP32 goes to deep sleep for 3 minutes (you can also change this, see `main.py`).
-
-Also remote controlling the desk is possible, but I have only implemented the basic commands so far since this is not a real use case for me. I just want to have some statistics about how much I'm sitting and standing while working and get notified automatically if I was sitting for a too long time. 
+This is an integration of a standing desk from Flexispot into home assistant in micropython. The height can be read out from the desk's controller and it gets pushed to Home Assistant via MQTT. I guess it should be quite simple to adapt this to any other (smarthome) system. I've also implemented remote controlling the desk via MQTT (see Control section).
 
 The desk controller has two RJ45 ports, one is used by the default remote of the table and the other one is unused. Both can be used to control the desk. 
 
@@ -13,10 +11,37 @@ Installation of Micropython on ESP32 is explained on this site: http://docs.micr
 
 For uploading the files I used [ampy](https://learn.adafruit.com/micropython-basics-load-files-and-run-code/install-ampy).
 
+## Control
+If you want to control your desk remotely, make sure to call the function `listen_mqtt()` after initializing the Flexispot Class:
+```python
+# main.py
+import machine
+import flexispot
+
+def main():
+    f = flexispot.ControlPanel(publish_discovery=False, debug=True)
+    f.listen_mqtt()
+       
+if __name__ == '__main__':
+    main()
+```
+The possible commands are just like the buttons on your normal external control panel:
+```
+up
+down
+pos1
+pos2
+pos3
+m
+```
+
+Send the command as plain text like `pos1` via MQTT to the command topic (default: `homeassistant/sensor/standingdesk/set`).
+
 ## Home Assistant `configuration.xaml`
 These are my custom sensors I've added to my `configuration.yaml`:
 
 ```yaml
+# configuration.xaml
 mqtt:
     broker: <MQTT Broker>
     discovery: true
@@ -90,8 +115,3 @@ Message Identifier for the height reported by the controller is `0x12` with thre
 4       2
   3 3 3    77
 ```
-
-## Todos and known bugs
-- [ ] As I said before I haven't implemented remote controlling from home assistant so far. Feel free to do it.
-- [ ] Right now I'm querying the height 3 times in a row in `main.py`. If I only query it once the message gets probably lost. I guess this is because of the following deep sleep and the publishing of mqtt messages which is not blocking.
-- [ ] The desk controller goes into some kind of sleep after some time (just like your normal control panel). Maybe we should implement some kind of timer which sets the read pin to low and high again.
