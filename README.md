@@ -87,16 +87,16 @@ Again thanks [stan](https://www.mikrocontroller.net/user/show/stan) and _miniflo
 
 Each message starts with `0x9b` and ends with `0x9d`. The second byte is the message's length and the third one is the message identifier. The last two bytes before message end `0x9d` is a 16bit Modbus-CRC16 Checksum.
 
-| 0    | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | Direction   | Command           |
-|------|------|------|------|------|------|------|------|------|-------------|-------------------|
-| `9b` | `06` | `02` | `00` | `00` | `6c` | `6c` | `a1` |      | `Tx`        | no button pressed |
-| `9b` | `06` | `02` | `01` | `00` | `6c` | `fc` | `a0` |      | `Tx`        | up                |
-| `9b` | `06` | `02` | `02` | `00` | `6c` | `0c` | `a0` |      | `Tx`        | down              |
-| `9b` | `06` | `02` | `04` | `00` | `6c` | `ac` | `a3` |      | `Tx`        | Pos. 1            |
-| `9b` | `06` | `02` | `08` | `00` | `6c` | `ac` | `a6` |      | `Tx`        | Pos. 2            |
-| `9b` | `06` | `02` | `10` | `00` | `6c` | `ac` | `ac` |      | `Tx`        | Pos. 3            |
-| `9b` | `06` | `02` | `20` | `00` | `6c` | `ac` | `b8` |      | `Tx`        | M                 |
-| `9b` | `07` | `12` | `xx` | `xx` | `xx` | `yy` | `yy` | `9b` | `Rx`        | Height            |
+| 0    | 1    | 2    | 3    | 4    | 5    | 6    | 7    | Direction   | Command           |
+|------|------|------|------|------|------|------|------|-------------|-------------------|
+| `9b` | `06` | `02` | `00` | `00` | `6c` | `a1` |      | `Tx`        | no button pressed |
+| `9b` | `06` | `02` | `01` | `00` | `fc` | `a0` |      | `Tx`        | up                |
+| `9b` | `06` | `02` | `02` | `00` | `0c` | `a0` |      | `Tx`        | down              |
+| `9b` | `06` | `02` | `04` | `00` | `ac` | `a3` |      | `Tx`        | Pos. 1            |
+| `9b` | `06` | `02` | `08` | `00` | `ac` | `a6` |      | `Tx`        | Pos. 2            |
+| `9b` | `06` | `02` | `10` | `00` | `ac` | `ac` |      | `Tx`        | Pos. 3            |
+| `9b` | `06` | `02` | `20` | `00` | `ac` | `b8` |      | `Tx`        | M                 |
+| `9b` | `07` | `12` | `xx` | `xx` | `yy` | `yy` | `9b` | `Rx`        | Height            |
 tbc
 
 ### Height
