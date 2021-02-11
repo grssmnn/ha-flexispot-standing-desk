@@ -5,7 +5,7 @@ This is an integration of a standing desk from Flexispot into home assistant in 
 The desk controller has two RJ45 ports, one is used by the default remote of the table and the other one is unused. Both can be used to control the desk. 
 
 ## Usage and installation
-I took an ESP32 and an old ethernet cable, cut it and soldered dupont wires with a female end to the Pins 4, 5, 6, 7 and 8. Pins 7 and 8 go to VIN and GND, connect 4 to `D18` of your ESP32, RX and TX to RX2/TX2.
+I took an ESP32 and an old ethernet cable, cut it and soldered dupont wires with a female end to the Pins 4, 5, 6, 7 and 8. On the pin assignment table below you can have a look which ports to use on the ESP32.
 
 Installation of Micropython on ESP32 is explained on this site: http://docs.micropython.org/en/latest/esp32/tutorial/intro.html#esp32-intro
 
@@ -71,16 +71,16 @@ The binary sensor `standing_at_desk` switches to `on` if the reported height of 
 ## PIN Assignment
 Thanks to [stan](https://www.mikrocontroller.net/user/show/stan) from this [topic](https://www.mikrocontroller.net/topic/493524). 
 
-| PIN | Color  | Description                                                     |
-|-----|--------|-----------------------------------------------------------------|
-| 1   | brown  | Reset of µC                                                     |
-| 2   | white  | SWIN of µC                                                      |
-| 3   | purple | unused                                                          |
-| 4   | red    | needs to be set to `HIGH` if you want to talk to the controller |
-| 5   | green  | RX (of remote)                                                  |
-| 6   | black  | TX (of remote)                                                  |
-| 7   | blue   | GND                                                             |
-| 8   | yellow | VDD (5V)                                                        |
+| PIN | Color  | Description                                                     |Port on ESP32|
+|-----|--------|-----------------------------------------------------------------|-------------|
+| 1   | brown  | Reset of µC                                                     |             |
+| 2   | white  | SWIN of µC                                                      |             |
+| 3   | purple | unused                                                          |             |
+| 4   | red    | needs to be set to `HIGH` if you want to talk to the controller |D18          |
+| 5   | green  | RX (of remote)                                                  |RX2          |
+| 6   | black  | TX (of remote)                                                  |TX2          |
+| 7   | blue   | GND                                                             |GND          |
+| 8   | yellow | VDD (5V)                                                        |VIN          |
 
 ## Protocol
 Again thanks [stan](https://www.mikrocontroller.net/user/show/stan) and _minifloat_ from this [topic](https://www.mikrocontroller.net/topic/493524). 
